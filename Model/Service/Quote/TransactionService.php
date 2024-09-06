@@ -1,6 +1,6 @@
 <?php
 /**
- WeArePlanet Magento 2
+ * WeArePlanet Magento 2
  *
  * This Magento 2 extension enables to process payments with WeArePlanet (https://www.weareplanet.com).
  *
@@ -128,7 +128,7 @@ class TransactionService extends AbstractTransactionService
     private function getPaymentUrlInSession(Quote $quote)
     {  
         $url = $this->checkoutSession->getPaymentUrl();
-        $transactionId = $quote->getWalleeTransactionId();
+        $transactionId = $quote->getWeareplanetTransactionId();
         if ($url && preg_match('/transactionId=(\d+)/', $url, $matches)
             && isset($matches[1]) && $matches[1] == $transactionId) {           
             return $url;
@@ -275,6 +275,13 @@ class TransactionService extends AbstractTransactionService
      */
     public function getTransactionByQuote(Quote $quote)
     {
+        //The transaction id can be null if the quote is restored when the payment process fails.
+        //This ensures that the cache has an available transaction. 
+        $transactionId = $quote->getWeareplanetTransactionId();
+        if (empty($transactionId)) {
+            $transactionArray[$quote->getId()] = $this->createTransactionByQuote($quote);
+        }
+
         $transactionArray = $this->getTransactionArrayFromSession();
         if (! \array_key_exists($quote->getId(), $transactionArray) ||
             $transactionArray[$quote->getId()] == null)
@@ -298,11 +305,11 @@ class TransactionService extends AbstractTransactionService
      * @param Quote $quote
      * @return bool
      */
-    private function checkTransactionIsStillAvailable(Quote $quote)
+    public function checkTransactionIsStillAvailable(Quote $quote)
     {
         $transactionArray = $this->getTransactionArrayFromSession();
         $transaction = null;
-        if ($transactionArray[$quote->getId()] !== null) {
+        if (isset($transactionArray[$quote->getId()]) && $transactionArray[$quote->getId()] !== null) {
             $transactionInSession = $transactionArray[$quote->getId()];
 
             //If the status of the transaction in cache is PENDING,
@@ -348,8 +355,8 @@ class TransactionService extends AbstractTransactionService
         $transaction = $this->apiClient->getApiClient()->getTransactionService()->create($spaceId, $createTransaction);
         $this->updateQuote($quote, $transaction);
         //here the order must be updated with the space and transaction, this avoids error before landing on the payment page
-        $quote->setWalleeTransactionId($transaction->getId());
-        $quote->setWalleeSpaceId($spaceId);
+        $quote->setWeareplanetTransactionId($transaction->getId());
+        $quote->setWeareplanetSpaceId($spaceId);
         $quote->save();
         return $transaction;
     }

@@ -1,6 +1,6 @@
 <?php
 /**
- WeArePlanet Magento 2
+ * WeArePlanet Magento 2
  *
  * This Magento 2 extension enables to process payments with WeArePlanet (https://www.weareplanet.com).
  *
@@ -217,6 +217,17 @@ class Adapter extends \Magento\Payment\Model\Method\Adapter
         if (empty($spaceId)) {
             $this->logger->debug("ADAPTER::isAvailable - FINISH");
             return false;
+        }
+
+        // disable dynamic check if payment method is available
+        $enableAvailablePaymentMethodsCheck = $this->scopeConfig->getValue(
+            'weareplanet_payment/checkout/enable_available_payment_methods_check',
+            ScopeInterface::SCOPE_STORE,
+            $quote->getStoreId()
+        );
+        if ($enableAvailablePaymentMethodsCheck === "0") {
+            $this->logger->debug("ADAPTER::isAvailable - FINISH");
+            return true;
         }
 
         try {
